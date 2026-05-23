@@ -93,7 +93,7 @@ with st.sidebar:
         st.session_state.results = []
         st.rerun()
 
-query = st.text_input("検索キーワード（英語推奨）", "amyloid beta")
+query = st.text_input("検索キーワード（英語推奨）", "")
 
 if st.button("論文を検索"):
     with st.spinner("タイトルを取得中..."):
