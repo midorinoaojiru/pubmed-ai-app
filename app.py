@@ -83,6 +83,8 @@ st.title("🧬 PMC 論文解析アシスタント")
 # セッション状態の初期化
 if "results" not in st.session_state:
     st.session_state.results = []
+if "analysis_storage" not in st.session_state:
+    st.session_state.analysis_storage = {} # 解析結果を貯める辞書
 
 # サイドバーに設定
 with st.sidebar:
@@ -91,12 +93,13 @@ with st.sidebar:
         st.session_state.results = []
         st.rerun()
 
-query = st.text_input("検索キーワード（英語推奨）", "")
+query = st.text_input("検索キーワード（英語推奨）", "amyloid beta")
 
 if st.button("論文を検索"):
     with st.spinner("タイトルを取得中..."):
         # 検索結果（タイトル付き）を保存
         st.session_state.results = search_pmc(query, max_results=10)
+        st.session_state.analysis_storage = {} # 新しい検索のときは前回の解析結果をクリア
         if not st.session_state.results:
             st.warning("論文が見つかりませんでした。")
         else:
@@ -119,25 +122,33 @@ for paper in st.session_state.results:
         col1.markdown(f"📄 **{title}**")
         col1.caption(f"PMC ID: {pmc_id}")
         
+# --- 解析ボタン ---
         if col2.button(f"解析する", key=f"btn_{pmc_id}"):
             with st.spinner("AI解析中..."):
                 data = fetch_sections(pmc_id)
                 if data:
+                    # テキストの準備
                     target_text = ""
-                    source_info = ""
-                    if data["Discussion"] or data["Conclusion"]:
+                    if data.get("Discussion") or data.get("Conclusion"):
                         target_text = f"Discussion: {data['Discussion']}\nConclusion: {data['Conclusion']}"
-                        source_info = "考察と結論から抽出"
-                    elif data["Abstract"]:
+                    elif data.get("Abstract"):
                         target_text = f"Abstract: {data['Abstract']}"
-                        source_info = "抄録(Abstract)から抽出"
-                    
+
                     if target_text.strip():
-                        prompt = f"以下の論文内容を要約してください。\n\n{target_text[:4000]}"
+                        # --- try-exceptブロックの開始 ---
                         try:
+                            prompt = f"以下の論文内容を要約してください。\n\n{target_text[:4000]}"
                             response = model.generate_content(prompt)
-                            st.info(f"**【解析結果】** ({source_info})\n\n{response.text}")
+                            # 解析結果をセッションに保存
+                            st.session_state.analysis_storage[pmc_id] = response.text
                         except Exception as e:
-                            st.error(f"解析エラー: {e}")
+                            st.error(f"解析エラーが発生しました: {e}")
+                        # --- try-exceptブロックの終了 ---
                     else:
-                        st.warning("テキストが見つかりませんでした。")
+                        st.warning("要約できるテキストが見つかりませんでした。")
+                else:
+                    st.error("論文データを取得できませんでした。")
+
+        # --- 解析済み結果の表示（ボタンの外側！） ---
+        if pmc_id in st.session_state.analysis_storage:
+            st.info(f"**【解析結果】**\n\n{st.session_state.analysis_storage[pmc_id]}")
