@@ -22,7 +22,7 @@ safety_settings = [
 model = genai.GenerativeModel('gemini-3.1-flash-lite', safety_settings=safety_settings)
 
 # --- 2. 論文検索関数（タイトル取得を強化） ---
-def search_pmc(query, max_results=10):
+def search_pmc(query, max_results=15):
     try:
         # IDを検索
         handle = Entrez.esearch(db="pmc", term=query, retmax=max_results, sort="relevance")
@@ -98,7 +98,7 @@ query = st.text_input("検索キーワード（英語のみ）", "")
 if st.button("論文を検索"):
     with st.spinner("タイトルを取得中..."):
         # 検索結果（タイトル付き）を保存
-        st.session_state.results = search_pmc(query, max_results=10)
+        st.session_state.results = search_pmc(query, max_results=15)
         st.session_state.analysis_storage = {} # 新しい検索のときは前回の解析結果をクリア
         if not st.session_state.results:
             st.warning("論文が見つかりませんでした。")
